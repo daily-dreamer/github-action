@@ -1,0 +1,18 @@
+name: My first flow
+on: [push, workflow_dispatch]
+jobs:
+  runs-on: ubutnu-laetst
+  steps:
+    - name: clone
+      uses:  action/checkout@v3
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+    - name: lint
+      runs: eslint --ext .jsx --fix src
+    - name: test
+      runs: vitest run
+    - name: build
+      runs: vite build
