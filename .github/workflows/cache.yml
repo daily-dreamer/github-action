@@ -1,0 +1,73 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  # Enables manual execution from the Actions tab or API
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target deployment/build environment'
+        required: false
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+      run-tests:
+        description: 'Run test suite during manual trigger'
+        required: true
+        default: true
+        type: boolean
+
+jobs:
+  test:
+    name: Run Tests
+    # Only run tests on push/PR, or if the manual 'run-tests' input is set to true
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.run-tests }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm' # Modern built-in npm caching
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+  build:
+    name: Build Project
+    # Runs after test if test executed, or runs directly if test was skipped
+    needs: test
+    if: ${{ always() && (needs.test.result == 'success' || needs.test.result == 'skipped') }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build project
+        run: npm run build
+        env:
+          BUILD_ENV: ${{ inputs.environment || 'production' }}
