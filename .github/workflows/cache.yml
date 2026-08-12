@@ -7,7 +7,6 @@ on:
   pull_request:
     branches:
       - main
-  # Enables manual execution from the Actions tab or API
   workflow_dispatch:
     inputs:
       environment:
@@ -27,7 +26,6 @@ on:
 jobs:
   test:
     name: Run Tests
-    # Only run tests on push/PR, or if the manual 'run-tests' input is set to true
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.run-tests }}
     runs-on: ubuntu-latest
 
@@ -39,7 +37,15 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm' # Modern built-in npm caching
+
+      # 1. Cache npm dependency store (~/.npm)
+      - name: Cache npm dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-
 
       - name: Install dependencies
         run: npm ci
@@ -49,7 +55,6 @@ jobs:
 
   build:
     name: Build Project
-    # Runs after test if test executed, or runs directly if test was skipped
     needs: test
     if: ${{ always() && (needs.test.result == 'success' || needs.test.result == 'skipped') }}
     runs-on: ubuntu-latest
@@ -62,10 +67,35 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+
+      # 1. Cache npm dependency store
+      - name: Cache npm dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-
 
       - name: Install dependencies
         run: npm ci
+
+      # 2. Cache Framework Build Output (e.g., Next.js / React / Vite / Nuxt)
+      - name: Cache build output
+        uses: actions/cache@v4
+        with:
+          # Change this path according to your build tool output directory:
+          # Next.js: .next/cache
+          # Vite / React / Vue: dist or .vite
+          # Nuxt: .nuxt
+          path: |
+            .next/cache
+            dist
+            build
+          # Key incorporates OS, node version, commit hash, and source file changes
+          key: ${{ runner.os }}-build-${{ hashFiles('**/package-lock.json', 'src/**') }}
+          restore-keys: |
+            ${{ runner.os }}-build-
 
       - name: Build project
         run: npm run build
