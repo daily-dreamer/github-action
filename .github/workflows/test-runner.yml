@@ -1,0 +1,27 @@
+name: Test Self-Hosted Runner
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: # Allows you to manually trigger the workflow from the UI
+
+jobs:
+  validate-runner:
+    runs-on: self-hosted
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Identify the machine
+        run: |
+          echo "🚀 Hello from the self-hosted Azure VM!"
+          echo "Hostname: $(hostname)"
+          echo "Current User: $(whoami)"
+          echo "OS Details: $(cat /etc/os-release | grep PRETTY_NAME | cut -d= -f2)"
+
+      - name: Verify workspace directory
+        run: |
+          echo "Current working directory: $(pwd)"
+          ls -la
